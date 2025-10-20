@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge Datasets - Plant Growth Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .back-btn {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: transform 0.2s ease;
+        }
+        
+        .back-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .form-section {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .datasets-section {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+        
+        .datasets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .dataset-card {
+            background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+            padding: 20px;
+            border-radius: 15px;
+            border-left: 5px solid #667eea;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .dataset-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .dataset-card.selected {
+            border-left-color: #4CAF50;
+            background: linear-gradient(135deg, #e8f5e8 0%, #d4edda 100%);
+        }
+        
+        .dataset-checkbox {
+            margin-bottom: 15px;
+        }
+        
+        .dataset-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+        
+        .dataset-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .dataset-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+        
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(76, 175, 80, 0.4);
+        }
+        
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        
+        .alert-error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #f44336;
+        }
+        
+        .alert-success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border-left: 4px solid #4caf50;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-state h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <a href="{{ url_for('dashboard') }}" class="back-btn">← Back to Dashboard</a>
+        
+        <div class="header">
+            <h1>🔗 Merge Datasets</h1>
+            <p>Combine multiple plant growth datasets for comparative analysis</p>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ 'success' if 'successful' in message else 'error' }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-section">
+                <div class="form-group">
+                    {{ form.name.label }}
+                    {{ form.name(class="form-control", placeholder="e.g., Combined Plant Growth Study") }}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.description.label }}
+                    {{ form.description(class="form-control", placeholder="Optional description of the merged dataset...") }}
+                </div>
+            </div>
+            
+            <div class="datasets-section">
+                <h2 class="section-title">Select Datasets to Merge</h2>
+                <p style="color: #666; margin-bottom: 20px;">Choose at least 2 datasets to combine them into a single analysis.</p>
+                
+                {% if uploads %}
+                <div class="datasets-grid">
+                    {% for upload in uploads %}
+                    <div class="dataset-card" id="card-{{ upload.id }}">
+                        <div class="dataset-checkbox">
+                            <input type="checkbox" name="uploads" value="{{ upload.id }}" id="upload-{{ upload.id }}" onchange="toggleCard({{ upload.id }})">
+                            <label for="upload-{{ upload.id }}">{{ upload.original_filename }}</label>
+                        </div>
+                        <div class="dataset-name">{{ upload.original_filename }}</div>
+                        <div class="dataset-stats">
+                            <div>
+                                <strong>{{ upload.total_measurements }}</strong><br>
+                                <small>Measurements</small>
+                            </div>
+                            <div>
+                                <strong>{{ "%.1f"|format(upload.total_growth) }}mm</strong><br>
+                                <small>Total Growth</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <h3>No datasets available</h3>
+                    <p>Upload some CSV files first to merge them.</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            {{ form.submit(class="submit-btn", id="mergeBtn", disabled=true) }}
+        </form>
+    </div>
+    
+    <script>
+        let selectedCount = 0;
+        
+        function toggleCard(uploadId) {
+            const card = document.getElementById(`card-${uploadId}`);
+            const checkbox = document.getElementById(`upload-${uploadId}`);
+            const mergeBtn = document.getElementById('mergeBtn');
+            
+            if (checkbox.checked) {
+                card.classList.add('selected');
+                selectedCount++;
+            } else {
+                card.classList.remove('selected');
+                selectedCount--;
+            }
+            
+            // Enable/disable merge button based on selection count
+            mergeBtn.disabled = selectedCount < 2;
+        }
+        
+        // Initialize button state
+        document.getElementById('mergeBtn').disabled = true;
+    </script>
+</body>
+</html>

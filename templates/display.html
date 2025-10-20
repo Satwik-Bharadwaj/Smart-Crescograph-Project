@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Data Preview - Plant Growth Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .info-section {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .info-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .info-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .info-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            color: #333;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tr:hover {
+            background: #f8f9ff;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            margin-top: 30px;
+            transition: transform 0.2s ease;
+            font-weight: bold;
+        }
+        
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .columns-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .column-badge {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌱 Data Preview</h1>
+        <p class="subtitle">Uploaded file: <strong>{{ filename }}</strong></p>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for message in messages %}
+                        <div class="alert alert-success">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <div class="info-section">
+            <h2>📊 Dataset Information</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Total Rows (Original)</div>
+                    <div class="info-value">{{ total_rows }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Rows After Cleaning</div>
+                    <div class="info-value">{{ final_rows }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Dropped Rows</div>
+                    <div class="info-value">{{ stats.dropped_rows }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Columns</div>
+                    <div class="info-value">{{ columns|length }}</div>
+                </div>
+            </div>
+            
+            {% if stats.dropped_rows > 0 %}
+            <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <strong>⚠️ Data Cleaning Notes:</strong>
+                <ul style="margin-top: 10px; margin-left: 20px;">
+                    {% if stats.missing_timestamp > 0 %}
+                    <li>Missing timestamps: {{ stats.missing_timestamp }} rows</li>
+                    {% endif %}
+                    {% if stats.missing_distance > 0 %}
+                    <li>Missing distance values: {{ stats.missing_distance }} rows</li>
+                    {% endif %}
+                    <li>Rows with missing critical data were dropped</li>
+                </ul>
+            </div>
+            {% endif %}
+            
+            <div style="margin-top: 20px;">
+                <strong>Column Names:</strong>
+                <div class="columns-list">
+                    {% for col in columns %}
+                        <span class="column-badge">{{ col }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2>📈 Distance Statistics (mm)</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Minimum</div>
+                    <div class="info-value">{{ "%.2f"|format(stats.min_distance) }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Maximum</div>
+                    <div class="info-value">{{ "%.2f"|format(stats.max_distance) }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Mean (Average)</div>
+                    <div class="info-value">{{ "%.2f"|format(stats.mean_distance) }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Variance</div>
+                    <div class="info-value">{{ "%.2f"|format(stats.variance_distance) }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Standard Deviation</div>
+                    <div class="info-value">{{ "%.2f"|format(stats.std_distance) }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Growth Range</div>
+                    <div class="info-value">{{ "%.2f"|format(stats.max_distance - stats.min_distance) }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2>📅 Time Range</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Start Date</div>
+                    <div class="info-value">{{ stats.date_range.start.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">End Date</div>
+                    <div class="info-value">{{ stats.date_range.end.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Duration</div>
+                    <div class="info-value">{{ (stats.date_range.end - stats.date_range.start).days }} days</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2>📈 Interactive Growth Chart</h2>
+            <div id="plot-container" style="background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div id="plot"></div>
+            </div>
+            <div style="margin-top: 15px; padding: 15px; background: #f8f9ff; border-radius: 8px; font-size: 0.9em; color: #666;">
+                <strong>📊 Chart Features:</strong>
+                <ul style="margin-top: 8px; margin-left: 20px;">
+                    <li><strong>Zoom:</strong> Mouse wheel or toolbar buttons</li>
+                    <li><strong>Pan:</strong> Click and drag to move around</li>
+                    <li><strong>Range Selector:</strong> Quick time range selection (1d, 3d, 1w, All)</li>
+                    <li><strong>Range Slider:</strong> Navigate through time periods</li>
+                    <li><strong>Hover:</strong> View detailed data points</li>
+                    <li><strong>Growth Rate:</strong> Secondary y-axis shows growth between measurements</li>
+                    <li><strong>Decrease Markers:</strong> Red triangles highlight growth decreases</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h2>📊 Growth Analysis</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Total Measurements</div>
+                    <div class="info-value">{{ growth_stats.total_measurements }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Growth Decreases</div>
+                    <div class="info-value" style="color: #FF4444;">{{ growth_stats.decrease_count }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Decrease Percentage</div>
+                    <div class="info-value" style="color: #FF4444;">{{ "%.1f"|format(growth_stats.decrease_percentage) }}%</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Max Growth</div>
+                    <div class="info-value" style="color: #2E8B57;">{{ "%.2f"|format(growth_stats.max_growth) }} mm</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Min Growth</div>
+                    <div class="info-value" style="color: #FF4444;">{{ "%.2f"|format(growth_stats.min_growth) }} mm</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Average Growth</div>
+                    <div class="info-value">{{ "%.2f"|format(growth_stats.avg_growth) }} mm</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Total Growth</div>
+                    <div class="info-value" style="color: #2E8B57;">{{ "%.2f"|format(growth_stats.total_growth) }} mm</div>
+                </div>
+            </div>
+        </div>
+        
+        {% if growth_stats.growth_periods %}
+        <div class="info-section">
+            <h2>⚠️ Growth Decrease Periods</h2>
+            <div class="table-container">
+                <table style="width: 100%; border-collapse: collapse; background: white;">
+                    <thead>
+                        <tr style="background: linear-gradient(135deg, #FF4444 0%, #CC0000 100%); color: white;">
+                            <th style="padding: 15px; text-align: left; font-weight: 600;">Timestamp</th>
+                            <th style="padding: 15px; text-align: left; font-weight: 600;">Height (mm)</th>
+                            <th style="padding: 15px; text-align: left; font-weight: 600;">Decrease (mm)</th>
+                            <th style="padding: 15px; text-align: left; font-weight: 600;">Growth Rate (%)</th>
+                            <th style="padding: 15px; text-align: left; font-weight: 600;">Previous Height (mm)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for period in growth_stats.growth_periods %}
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 12px 15px;">{{ period.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td style="padding: 12px 15px;">{{ "%.2f"|format(period.distance_mm) }}</td>
+                            <td style="padding: 12px 15px; color: #FF4444; font-weight: bold;">{{ "%.2f"|format(period.growth_difference) }}</td>
+                            <td style="padding: 12px 15px; color: #FF4444;">{{ "%.1f"|format(period.growth_rate_percent) if period.growth_rate_percent else 'N/A' }}</td>
+                            <td style="padding: 12px 15px;">{{ "%.2f"|format(period.previous_distance) if period.previous_distance else 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if growth_stats.consecutive_decreases %}
+            <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <strong>⚠️ Consecutive Decrease Periods:</strong>
+                <p style="margin-top: 8px; color: #856404;">
+                    Found {{ growth_stats.consecutive_decreases|length }} consecutive decrease period(s). 
+                    This may indicate environmental stress or measurement issues.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="info-section">
+            <h2>✅ No Growth Decreases Detected</h2>
+            <div style="padding: 20px; background: #d4edda; border-radius: 8px; border-left: 4px solid #28a745; color: #155724;">
+                <strong>Great news!</strong> Your plant showed consistent growth throughout the measurement period with no decreases detected.
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if ml_analysis %}
+        <div class="info-section">
+            <h2>🤖 Enhanced Machine Learning Analysis</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Best Model</div>
+                    <div class="info-value">{{ ml_analysis.best_model }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Model Accuracy (R²)</div>
+                    <div class="info-value">{{ "%.3f"|format(ml_analysis.growth_analysis.model_accuracy_r2) }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Prediction Confidence</div>
+                    <div class="info-value" style="color: {% if 'High' in ml_analysis.growth_analysis.prediction_confidence or 'Excellent' in ml_analysis.growth_analysis.prediction_confidence %}#28a745{% elif 'Good' in ml_analysis.growth_analysis.prediction_confidence or 'Moderate' in ml_analysis.growth_analysis.prediction_confidence %}#ffc107{% else %}#dc3545{% endif %};">
+                        {{ ml_analysis.growth_analysis.prediction_confidence }}
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Avg Growth Rate</div>
+                    <div class="info-value">{{ "%.3f"|format(ml_analysis.growth_analysis.avg_growth_rate_mm_per_hour) }} mm/h</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Actual Growth</div>
+                    <div class="info-value" style="color: #2E8B57;">{{ "%.2f"|format(ml_analysis.growth_analysis.actual_growth) }} mm</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Predicted Growth</div>
+                    <div class="info-value" style="color: #FF6B35;">{{ "%.2f"|format(ml_analysis.growth_analysis.predicted_growth) }} mm</div>
+                </div>
+            </div>
+            
+            {% if ml_analysis.all_model_scores %}
+            <div style="margin-top: 20px; padding: 20px; background: #f8f9ff; border-radius: 10px;">
+                <h3 style="color: #333; margin-bottom: 15px;">📈 Model Performance Comparison</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    {% for model_name, score in ml_analysis.all_model_scores.items() %}
+                    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <div style="font-weight: bold; color: #333; margin-bottom: 5px;">{{ model_name }}</div>
+                        <div style="font-size: 1.2em; color: #667eea; font-weight: bold;">{{ "%.3f"|format(score) }}</div>
+                        <div style="font-size: 0.9em; color: #666;">R² Score</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if ml_analysis.growth_analysis.feature_importance %}
+            <div style="margin-top: 20px; padding: 20px; background: #f8f9ff; border-radius: 10px;">
+                <h3 style="color: #333; margin-bottom: 15px;">🔍 Top Feature Importance</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
+                    {% for feature, importance in ml_analysis.growth_analysis.feature_importance.items()[:8] %}
+                    <div style="background: white; padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 500; color: #333;">{{ feature.replace('_', ' ').title() }}</span>
+                            <span style="font-weight: bold; color: #667eea;">{{ "%.3f"|format(importance) }}</span>
+                        </div>
+                        <div style="margin-top: 5px; height: 4px; background: #e9ecef; border-radius: 2px;">
+                            <div style="height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 2px; width: {{ (importance * 100)|round }}%;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <div style="margin-top: 20px; padding: 20px; background: #f8f9ff; border-radius: 8px; border-left: 4px solid #6c5ce7;">
+                <h3 style="color: #6c5ce7; margin-bottom: 15px;">📊 Growth Trend Analysis</h3>
+                <div style="line-height: 1.6; color: #555;">
+                    <p><strong>Current Growth Pattern:</strong> 
+                        {% if ml_analysis.growth_analysis.actual_growth > 0 %}
+                            Your plant shows positive growth of {{ "%.2f"|format(ml_analysis.growth_analysis.actual_growth) }} mm over the measurement period.
+                        {% else %}
+                            Your plant shows no growth or negative growth of {{ "%.2f"|format(ml_analysis.growth_analysis.actual_growth) }} mm.
+                        {% endif %}
+                    </p>
+                    
+                    <p><strong>Average Growth Rate:</strong> 
+                        {{ "%.3f"|format(ml_analysis.growth_analysis.avg_growth_rate_mm_per_hour) }} mm per hour, which is 
+                        {% if ml_analysis.growth_analysis.avg_growth_rate_mm_per_hour > 0.1 %}
+                            <span style="color: #28a745;">excellent</span>
+                        {% elif ml_analysis.growth_analysis.avg_growth_rate_mm_per_hour > 0.05 %}
+                            <span style="color: #ffc107;">moderate</span>
+                        {% else %}
+                            <span style="color: #dc3545;">slow</span>
+                        {% endif %}
+                        for plant growth.
+                    </p>
+                    
+                    <p><strong>Model Performance:</strong> 
+                        The {{ ml_analysis.best_model }} model achieved an R² score of {{ "%.3f"|format(ml_analysis.growth_analysis.model_accuracy_r2) }}, 
+                        indicating 
+                        {% if ml_analysis.growth_analysis.model_accuracy_r2 > 0.8 %}
+                            <span style="color: #28a745;">high accuracy</span> in predicting growth patterns.
+                        {% elif ml_analysis.growth_analysis.model_accuracy_r2 > 0.5 %}
+                            <span style="color: #ffc107;">moderate accuracy</span> in predicting growth patterns.
+                        {% else %}
+                            <span style="color: #dc3545;">limited accuracy</span> in predicting growth patterns.
+                        {% endif %}
+                    </p>
+                    
+                    {% if growth_stats.decrease_count > 0 %}
+                    <p><strong>Decrease Analysis:</strong> 
+                        {{ growth_stats.decrease_count }} decrease period(s) were detected, representing 
+                        {{ "%.1f"|format(growth_stats.decrease_percentage) }}% of measurements. 
+                        {% if growth_stats.decrease_percentage > 20 %}
+                            This high frequency of decreases may indicate environmental stress or measurement issues.
+                        {% elif growth_stats.decrease_percentage > 10 %}
+                            Some decrease periods were observed, which is normal but worth monitoring.
+                        {% else %}
+                            Decrease periods are minimal, indicating healthy growth.
+                        {% endif %}
+                    </p>
+                    {% endif %}
+                    
+                    <p><strong>Future Prediction:</strong> 
+                        Based on current trends, the model predicts 
+                        {% if ml_analysis.growth_analysis.future_growth > 0 %}
+                            continued growth of approximately {{ "%.2f"|format(ml_analysis.growth_analysis.future_growth) }} mm in the near future.
+                        {% else %}
+                            potential stagnation or decline in growth.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="info-section">
+            <h2>🤖 Machine Learning Analysis</h2>
+            <div style="padding: 20px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107; color: #856404;">
+                <strong>⚠️ ML Analysis Unavailable:</strong> Not enough data points for machine learning model training (minimum 3 required).
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="info-section">
+            <h2>👁️ Data Preview (First 10 Rows)</h2>
+            <div class="table-container">
+                {{ preview_data|safe }}
+            </div>
+        </div>
+        
+        <a href="/" class="back-btn">⬅️ Upload Another File</a>
+    </div>
+    
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <script>
+        // Render the Plotly graph
+        var plotData = {{ plot_json|safe }};
+        Plotly.newPlot('plot', plotData.data, plotData.layout, {
+            responsive: true,
+            displayModeBar: true,
+            modeBarButtonsToRemove: ['pan2d', 'lasso2d', 'select2d'],
+            displaylogo: false
+        });
+        
+        // Make the plot responsive
+        window.addEventListener('resize', function() {
+            Plotly.Plots.resize('plot');
+        });
+        
+        // Add custom toolbar buttons for better UX
+        document.addEventListener('DOMContentLoaded', function() {
+            // The plot is already rendered above, this is for any additional customization
+            console.log('Plant growth chart loaded successfully!');
+        });
+    </script>
+</body>
+</html>
